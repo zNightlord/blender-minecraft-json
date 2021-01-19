@@ -41,24 +41,26 @@ def load(self,context,
          **kwargs):
     with open(filepath, "r") as f:
         data = json.load(f)
-    try:
-        elements = data["elements"]
-    except KeyError:
-        # Implement using parent json file.
-        if "parent" in data:
-            parent = data["parent"]
-            parent = parent.replace("/","\\")
-            path = os.path.dirname(os.path.abspath(filepath))
-            split = os.path.split(path)
-            parent_file = str(os.path.split(parent)[1])
-            parentpath = os.path.join(split[0],parent + ".json")
-    try:
-        with open(parentpath, "r") as f:
-            data = json.load(f)
+        try:
             elements = data["elements"]
-    except FileNotFoundError: # Invalid .json file not found.
-        self.report({"ERROR"}, "Invalid json. No elements found, please replace with parent " + parent_file + ".json " + "(" +parentpath + ")")
-        return {"CANCELLED"}
+        except KeyError:
+            # Implement using parent json file.
+            if "parent" in data:
+                parent = data["parent"]
+                parent = parent.replace("/","\\")
+                parent = parent.replace("minecraft:","")
+                path = os.path.dirname(os.path.abspath(filepath))
+                split = os.path.split(path)
+                parent_file = str(os.path.split(parent)[1])
+                parentpath = os.path.join(split[0],parent + ".json")
+                print(parentpath)
+            try:
+                with open(parentpath, "r") as f:
+                    data = json.load(f)
+                    elements = data["elements"]
+            except (FileNotFoundError, KeyError): # Invalid .json file not found.
+                self.report({"ERROR"}, "Invalid json. No elements found, please replace with parent " + parent_file + ".json " + "(" +parentpath + ")")
+                return {"CANCELLED"} # Cancel the display Error 
 
     # check if groups in .json
     # not a minecraft .json spec, used by this exporter + Blockbench
