@@ -1,8 +1,10 @@
 import json
-import numpy as np
 import math
+import os
 from math import inf
+
 import bpy
+import numpy as np
 from mathutils import Vector
 
 # direction names for minecraft cube face UVs
@@ -31,17 +33,34 @@ DIRECTION_NORMALS = np.array([
 ])
 DIRECTION_NORMALS = np.tile(DIRECTION_NORMALS[np.newaxis,...], (6,1,1))
 
-def load(context,
+def load(self,context,
          filepath,
          import_uvs = True,               # import face uvs
          translate_origin_by_8 = False,   # shift model by (-8, -8, -8)
          recenter_to_origin = True,       # recenter model to origin, overrides translate origin
          **kwargs):
-    
     with open(filepath, "r") as f:
         data = json.load(f)
-
-    elements = data["elements"]
+        try:
+            elements = data["elements"]
+        except KeyError:
+            # Implement using parent json file.
+            if "parent" in data:
+                parent = data["parent"]
+                parent = parent.replace("/","\\")
+                parent = parent.replace("minecraft:","")
+                path = os.path.dirname(os.path.abspath(filepath))
+                split = os.path.split(path)
+                parent_file = str(os.path.split(parent)[1])
+                parentpath = os.path.join(split[0],parent + ".json")
+                print(parentpath)
+            try:
+                with open(parentpath, "r") as f:
+                    data = json.load(f)
+                    elements = data["elements"]
+            except (FileNotFoundError, KeyError): # Invalid .json file not found.
+                self.report({"ERROR"}, "Invalid json. No elements found, please replace with parent " + parent_file + ".json " + "(" +parentpath + ")")
+                return {"CANCELLED"} # Cancel the display Error 
 
     # check if groups in .json
     # not a minecraft .json spec, used by this exporter + Blockbench
@@ -170,7 +189,6 @@ def load(context,
 
         # save created object
         objects.append(obj)
-
         # ================================
         # update global model bounding box
         # ================================
